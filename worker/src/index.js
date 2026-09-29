@@ -62,7 +62,7 @@ export async function handleChat(body, env) {
 
   const seen = new Set();
   const sources = hits
-    .filter((h) => h.score >= 5)
+    .filter((h) => h.score >= 5 && h.score >= hits[0].score * 0.5) // kun tydeligt relevante kilder
     .slice(0, 3)
     .map((h) => ({ title: h.source === "lejeloven" ? h.title.split(" – ")[0] + " (lejeloven)" : h.title, url: h.url }))
     .filter((s) => (seen.has(s.title) ? false : seen.add(s.title)));
