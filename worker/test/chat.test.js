@@ -49,3 +49,13 @@ test("sanitizeMessages afviser ugyldigt input og begrænser længde", () => {
   assert.equal(long.length, 1);
   assert.equal(long[0].content.length, 1000);
 });
+
+import { buildContext } from "../src/prompt.js";
+test("husordenen står først i konteksten og er markeret som gældende foran lejeloven", () => {
+  const hits = index.search("Må jeg holde fest og larme?", 6);
+  const ctx = buildContext(hits);
+  assert.match(ctx.split("\n")[0], /HUSORDEN – GÆLDER FORAN LEJELOVEN/);
+});
+for (const [q, id] of [["Må jeg have en hund?", "husorden-10"], ["Må jeg holde fest?", "husorden-7"], ["Må jeg ryge i lejligheden?", "husorden-15"]]) {
+  test(`husorden vinder over lejeloven: ${q}`, () => assert.equal(index.search(q, 1)[0].id, id));
+}

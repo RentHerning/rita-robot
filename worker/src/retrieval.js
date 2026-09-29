@@ -58,7 +58,7 @@ function expand(tokens) {
 }
 
 // Praktiske kilder vægtes over lovteksten, fordi de oftest besvarer lejernes spørgsmål direkte
-const SOURCE_BOOST = { hjemmeside: 1.5, husorden: 1.4, gdpr: 1.2, lejeloven: 1.0 };
+const SOURCE_BOOST = { husorden: 1.7, hjemmeside: 1.5, gdpr: 1.2, lejeloven: 0.9 };
 
 export class Index {
   constructor(chunks) {

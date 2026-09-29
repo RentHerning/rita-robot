@@ -72,7 +72,7 @@ Ret markdown-filerne i `data/sources/`. Hvert `## `-afsnit bliver én søgbar bi
 
 Lejeloven i vidensbasen er den oprindelige LOV nr. 341 af 22/03/2022. Retsinformation har endnu ikke udgivet en samlet lovbekendtgørelse, og loven er ændret otte gange siden (senest LOV nr. 615 af 30/06/2026). Rita gør derfor opmærksom på at tjekke den gældende tekst ved tvivl. Når der kommer en ny lovbekendtgørelse, erstattes `data/raw/lejeloven.txt` med dens tekst (`pdftotext fil.pdf data/raw/lejeloven.txt`).
 
-Husordenen henviser til paragrafnumre fra den tidligere lejelov (§ 27, § 83, § 93). Rita er instrueret i at citere lejeloven ud fra lovens egen tekst. Rent Herning bør overveje at opdatere husordenen.
+Husordenen har forrang. Den er de regler, Rent Herning kører efter, så Rita svarer ud fra husordenen, når den dækker emnet, også hvor den afviger fra lejeloven. Kilderne prioriteres i rækkefølgen husorden, hjemmeside, GDPR og lejelov. Det sker både i søgningen (vægtning) og i prompten. Husordenen henviser til paragrafnumre fra den tidligere lejelov (§ 27, § 83, § 93). Det er nævnt for ledelsen, men Rita gengiver husordenen, som den er.
 
 Rita gemmer ingen samtaler på serveren. Samtalen ligger kun i brugerens browserfane (sessionStorage) og forsvinder, når fanen lukkes. Widgetten beder brugeren om ikke at skrive personoplysninger, og formularerne klarer alt personligt. Cloudflare Workers AI behandler teksten under Cloudflares databehandlervilkår. Det bør nævnes i Rent Hernings privatlivstekst, før botten går live.
 
