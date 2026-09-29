@@ -5,8 +5,8 @@
   "scripts": {
     "build:knowledge": "node ../scripts/build-knowledge.mjs",
     "test": "node --test test/*.test.js",
-    "dev": "wrangler dev --remote",
-    "deploy": "npm run build:knowledge && wrangler deploy"
+    "dev": "npx wrangler dev --remote",
+    "deploy": "npm run build:knowledge && npx wrangler deploy"
   },
   "devDependencies": {
     "wrangler": "^4"
