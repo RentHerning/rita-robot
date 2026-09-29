@@ -17,7 +17,7 @@ run_worker_first = ["/api/*", "/health"]
 ALLOWED_ORIGINS = "https://rentherning.dk,https://www.rentherning.dk,https://rita-robot.philip15.workers.dev,http://localhost:8787"
 MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 # Tillad lokale testsider (http://localhost:* og http://127.0.0.1:*). Sæt til "false" i produktion.
-ALLOW_LOCALHOST = "true"
+ALLOW_LOCALHOST = "false"
 
 # Skift til en anden sprogmodel senere (fx Claude eller en dansk model på Hugging Face):
 # LLM_PROVIDER = "openai-compatible"
