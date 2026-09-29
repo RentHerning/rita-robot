@@ -18,7 +18,8 @@
   <h1>Testside</h1>
   <p>Denne side viser chatbotten Rita, som den vil se ud på rentherning.dk. Klik på den grønne cirkel nede i højre hjørne.</p>
   <p>Sådan kommer Rita på den rigtige hjemmeside – én linje lige før <code>&lt;/body&gt;</code>:</p>
-  <p><code>&lt;script src="https://rita-robot.&lt;konto&gt;.workers.dev/rita.js" defer&gt;&lt;/script&gt;</code></p>
+  <p><code id="snippet"></code></p>
+  <script>document.getElementById("snippet").textContent = '<script src="' + location.origin + '/rita.js" defer></' + 'script>';</script>
 </main>
 <script src="rita.js" defer></script>
 </body>

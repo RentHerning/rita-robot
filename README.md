@@ -5,7 +5,7 @@ Rita er en dansk chatbot til [rentherning.dk](https://rentherning.dk). Den svare
 Hele løsningen kører på én Cloudflare Worker. Den serverer selve widget-scriptet, søger i en lille indbygget vidensbase og kalder Cloudflare Workers AI. Ved få henvendelser om dagen ligger det inden for Cloudflares gratis kvote. Hjemmesiden skal kun have tilføjet én linje:
 
 ```html
-<script src="https://rita-robot.<konto>.workers.dev/rita.js" defer></script>
+<script src="https://rita-robot.philip15.workers.dev/rita.js" defer></script>
 ```
 
 ## Sådan hænger det sammen
@@ -46,7 +46,7 @@ npx wrangler login
 npm run deploy                # bygger vidensbasen og deployer
 ```
 
-Efter deploy kan botten afprøves på `https://rita-robot.<konto>.workers.dev/demo.html`. Når den virker, skal scriptlinjen ovenfor ind lige før `</body>` på rentherning.dk. Siden er lavet af Simpelapps.dk, så det er formentlig dem, der skal indsætte den. Husk at tilføje eventuelle test-domæner i `ALLOWED_ORIGINS` i `worker/wrangler.toml`. Andre domæner får afvist deres kald.
+Efter deploy kan botten afprøves på `https://rita-robot.philip15.workers.dev/demo.html`. Når den virker, skal scriptlinjen ovenfor ind lige før `</body>` på rentherning.dk. Siden er lavet af Simpelapps.dk, så det er formentlig dem, der skal indsætte den. Husk at tilføje eventuelle test-domæner i `ALLOWED_ORIGINS` i `worker/wrangler.toml`. Andre domæner får afvist deres kald.
 
 ## Skift sprogmodel
 

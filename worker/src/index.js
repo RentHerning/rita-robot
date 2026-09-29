@@ -11,7 +11,9 @@ const URGENT = /\b(brand|brænder|ild|røg|vandskade|oversvømme\w*|sprunget\s+r
 function corsHeaders(request, env) {
   const origin = request.headers.get("Origin") || "";
   const allowed = (env.ALLOWED_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const ok = allowed.length === 0 || allowed.includes("*") || allowed.includes(origin);
+  // Lokale testsider (Live Server o.l.) på vilkårlig port, når ALLOW_LOCALHOST = "true"
+  const local = env.ALLOW_LOCALHOST === "true" && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  const ok = local || allowed.length === 0 || allowed.includes("*") || allowed.includes(origin);
   return {
     "Access-Control-Allow-Origin": ok ? origin || "*" : "null",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
