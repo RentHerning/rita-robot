@@ -1,0 +1,14 @@
+{
+  "name": "rita-robot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:knowledge": "node ../scripts/build-knowledge.mjs",
+    "test": "node --test test/*.test.js",
+    "dev": "wrangler dev --remote",
+    "deploy": "npm run build:knowledge && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}
