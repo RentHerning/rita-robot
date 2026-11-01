@@ -1,12 +1,15 @@
 import knowledge from "./knowledge.json" with { type: "json" };
 import { Index } from "./retrieval.js";
-import { SYSTEM_PROMPT, FORMS, buildContext } from "./prompt.js";
+import { SYSTEM_PROMPT, buildContext } from "./prompt.js";
 import { parseReply, sanitizeMessages } from "./util.js";
 
 const index = new Index(knowledge);
+// Hele vidensbasen er lille nok til at sendes med hver gang (se prompt.js).
+const CONTEXT = buildContext(knowledge);
 
 const DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const URGENT = /\b(brand|brænder|ild|røg|vandskade|oversvømme\w*|sprunget\s+rør|rørbrud|gaslugt|strømsvigt)\b/i;
+const URGENT = /\b(brand|brænder|ild|røg|vandskade|oversvømme\w*|sprunget\s+rør|rørbrud|gaslugt|on\s+fire|flood\w*|water\s+damage|burst\s+pipe|gas\s+leak)\b/i;
+// NB: ikke "fire" alene (= tallet 4 på dansk) og ikke "smoke" ("may I smoke?" er et husordensspørgsmål).
 
 function corsHeaders(request, env) {
   const origin = request.headers.get("Origin") || "";
@@ -49,27 +52,27 @@ export async function handleChat(body, env) {
 
   const userTurns = messages.filter((m) => m.role === "user");
   const last = userTurns.at(-1).content;
-  // Opfølgende spørgsmål ("og hvad med katte?") søges sammen med forrige spørgsmål
+
+  const system = `${SYSTEM_PROMPT}\n\nKONTEKST:\n${CONTEXT}`;
+  const raw = await callModel(env, [{ role: "system", content: system }, ...messages]);
+  let { reply, help } = parseReply(raw || "");
+
+  if (!reply) reply = "Beklager, jeg kunne ikke finde et svar. Du er velkommen til at skrive til os under Andre spørgsmål på siden Hjælp & kontakt.";
+  // Sikkerhedsnet: nævner brugeren brand eller vandskade, vises akut-kortet altid.
+  if (URGENT.test(last) && help?.code !== "akut") help = { code: "akut", message: last };
+
+  // Kildelinks: søgningen bruges kun til at vise de tydeligt relevante afsnit.
+  // Opfølgende spørgsmål ("og hvad med katte?") søges sammen med forrige spørgsmål.
   const query = userTurns.length > 1 && last.length < 60 ? `${userTurns.at(-2).content} ${last}` : last;
   const hits = index.search(query, 6);
-
-  const system = `${SYSTEM_PROMPT}\n\nKONTEKST:\n${hits.length ? buildContext(hits) : "(ingen relevante kilder fundet)"}`;
-  const raw = await callModel(env, [{ role: "system", content: system }, ...messages]);
-  let { reply, form } = parseReply(raw || "");
-
-  if (!reply) reply = "Beklager, jeg kunne ikke finde et svar. Du er velkommen til at skrive til os via formularen Forespørgsel.";
-  if (!form && URGENT.test(last)) {
-    form = { code: "akut", ...FORMS.akut, message: last };
-  }
-
   const seen = new Set();
   const sources = hits
-    .filter((h) => h.score >= 5 && h.score >= hits[0].score * 0.5) // kun tydeligt relevante kilder
-    .slice(0, 3)
-    .map((h) => ({ title: h.source === "lejeloven" ? h.title.split(" – ")[0] + " (lejeloven)" : h.title, url: h.url }))
-    .filter((s) => (seen.has(s.title) ? false : seen.add(s.title)));
+    .filter((h) => h.source !== "kontakt" && h.score >= 4 && h.score >= hits[0].score * 0.5)
+    .slice(0, 2)
+    .map((h) => ({ title: h.title, source: h.source, url: h.url }))
+    .filter((s) => (seen.has(s.url + s.title) ? false : seen.add(s.url + s.title)));
 
-  return { status: 200, data: { reply, form, sources } };
+  return { status: 200, data: { reply, help, sources } };
 }
 
 export default {
@@ -97,7 +100,7 @@ export default {
         return json(data, status, cors);
       } catch (err) {
         console.error("chat error", err?.message);
-        return json({ error: "Rita har tekniske problemer lige nu. Prøv igen senere, eller brug kontaktformularen." }, 502, cors);
+        return json({ error: "Rita har tekniske problemer lige nu. Prøv igen senere, eller brug siden Hjælp & kontakt." }, 502, cors);
       }
     }
 

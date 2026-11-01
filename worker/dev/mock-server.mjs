@@ -5,14 +5,14 @@ import { readFileSync, existsSync } from "node:fs";
 import worker from "../src/index.js";
 
 const env = {
-  ALLOWED_ORIGINS: "http://localhost:8787",
+  ALLOWED_ORIGINS: "http://localhost:8787,http://localhost:5173",
   AI: {
     async run(model, { messages }) {
       const q = messages.at(-1).content;
-      const ctx = messages[0].content.split("KONTEKST:\n")[1] || "";
-      const first = ctx.split("\n\n")[0].slice(0, 260);
-      let reply = `(Testsvar uden AI) Mest relevante kilde:\n${first}…`;
-      if (/drypper|itu|virker ikke/i.test(q)) reply += `\n[[FORMULAR:vicevaert|${q}]]`;
+      let reply = "(Testsvar uden AI) Rita svarer her ud fra husordenen og privatlivsdokumentet.";
+      if (/drypper|itu|virker ikke|dripping|broken/i.test(q)) reply += `\n[[HJÆLP:vicevaert|${q}]]`;
+      if (/flytte|opsig|move out/i.test(q)) reply += `\n[[HJÆLP:opsigelse|-]]`;
+      if (/bolig|lejlighed|flat|apartment/i.test(q)) reply += `\n[[HJÆLP:boliger|-]]`;
       return { response: reply };
     },
   },

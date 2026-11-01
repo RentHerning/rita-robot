@@ -1,19 +1,24 @@
-import { FORMS } from "./prompt.js";
+import { FLOWS, LEGACY } from "./prompt.js";
 
 const MAX_MSG_CHARS = 1000;
 const MAX_TURNS = 10;
 
+// [[HJÆLP:vicevaert|Min vandhane drypper.]]  (også HJAELP/HELP og den gamle FORMULAR-syntaks)
+const TAG = /\[\[\s*(?:HJÆLP|HJAELP|HELP|FORMULAR)\s*:\s*([a-zæøå0-9]+)\s*\|([\s\S]*?)\]\]/i;
+
 export function parseReply(raw) {
-  let form = null;
-  const m = raw.match(/\[\[\s*FORMULAR\s*:\s*([a-zø0-9]+)\s*\|([\s\S]*?)\]\]/i);
+  let help = null;
   let reply = raw;
+  const m = raw.match(TAG);
   if (m) {
-    const code = m[1].toLowerCase().replace("ø", "oe");
-    if (FORMS[code]) form = { code, ...FORMS[code], message: m[2].trim() };
+    let code = m[1].toLowerCase().replace(/ø/g, "oe").replace(/æ/g, "ae");
+    code = LEGACY[code] ?? code;
+    const message = m[2].trim();
+    if (FLOWS.includes(code)) help = { code, message: message === "-" ? "" : message };
     reply = raw.replace(m[0], "");
   }
   reply = reply.replace(/\[\[[^\]]*\]\]/g, "").trim();
-  return { reply, form };
+  return { reply, help };
 }
 
 export function sanitizeMessages(input) {

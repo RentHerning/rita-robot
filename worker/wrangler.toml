@@ -13,8 +13,9 @@ binding = "ASSETS"
 run_worker_first = ["/api/*", "/health"]
 
 [vars]
-# Domæner der må bruge chatten. Tilføj evt. test-domæner, adskilt med komma.
-ALLOWED_ORIGINS = "https://rentherning.dk,https://www.rentherning.dk,https://rita-robot.philip15.workers.dev,http://localhost:8787"
+# Domæner der må bruge chatten, adskilt med komma. rentherning.github.io er demoen af den nye
+# hjemmeside, localhost:5173 er dens lokale udviklingsserver.
+ALLOWED_ORIGINS = "https://rentherning.dk,https://www.rentherning.dk,https://rentherning.github.io,https://rita-robot.philip15.workers.dev,http://localhost:8787,http://localhost:5173"
 MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 # Tillad lokale testsider (http://localhost:* og http://127.0.0.1:*). Sæt til "false" i produktion.
 ALLOW_LOCALHOST = "false"
