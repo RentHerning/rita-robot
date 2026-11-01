@@ -32,6 +32,20 @@ const SYNONYMS = {
   bolig: ["lejemål", "lejlighed"], lejlighed: ["lejemål"], ledig: ["ledige", "boligportal"], ledige: ["boligportal"],
   kontakt: ["formular", "formularer"], formular: ["formularer"], hjemmesiden: ["hjemmesidens", "menu"],
   huslejenævn: ["huslejenævnet"], nøgle: ["nøgler", "låse"], lås: ["låse"],
+  vicevært: ["ordnes", "repareres"], drypper: ["ordnes", "vandhane"], stoppet: ["ordnes", "afløb"],
+  // Engelske spørgsmål -> danske ord i kilderne (bruges kun til kildelinks)
+  pet: ["husdyr"], pets: ["husdyr"], dog: ["husdyr"], dogs: ["husdyr"], cat: ["husdyr"], cats: ["husdyr"],
+  noise: ["støj"], noisy: ["støj"], party: ["støj", "fester"], quiet: ["støj", "ro"], music: ["støj"],
+  smoke: ["rygning"], smoking: ["rygning"], cigarette: ["rygning"],
+  mould: ["skimmelsvamp"], mold: ["skimmelsvamp"], damp: ["skimmelsvamp", "fugt"], ventilation: ["udluftning"],
+  laundry: ["vaskerum", "tøjtørring"], washing: ["vaskerum"], dry: ["tøjtørring"], drying: ["tøjtørring"],
+  rubbish: ["affald"], trash: ["affald"], garbage: ["affald"], waste: ["affald"], bins: ["affald"],
+  bike: ["cykler"], bicycle: ["cykler"], pram: ["barnevogne"], stairs: ["trappevask", "opgangen"],
+  cleaning: ["rengøring"], clean: ["rengøring"], moving: ["fraflytning", "opsigelse"], notice: ["opsigelse", "opsigelsesvarsel"],
+  holes: ["huller", "skader"], walls: ["vægge"], paint: ["maling"], waterbed: ["vandsenge"], lock: ["aflåsning"],
+  data: ["personoplysninger"], personal: ["personoplysninger"], privacy: ["personoplysninger", "gdpr"],
+  delete: ["sletning", "slettes"], deleted: ["sletning", "slettes"], keep: ["sletning", "opbevares"], stored: ["opbevares", "sletning"],
+  breach: ["brud"], security: ["sikkerhed"], gdpr: ["gdpr", "personoplysninger"],
 };
 
 const SUFFIXES = [
@@ -57,8 +71,8 @@ function expand(tokens) {
   return out;
 }
 
-// Praktiske kilder vægtes over lovteksten, fordi de oftest besvarer lejernes spørgsmål direkte
-const SOURCE_BOOST = { husorden: 1.7, hjemmeside: 1.5, gdpr: 1.2, lejeloven: 0.9 };
+// Husordenen vægtes lidt højest, fordi den oftest besvarer lejernes spørgsmål direkte
+const SOURCE_BOOST = { husorden: 1.3, gdpr: 1.2, kontakt: 1.0 };
 
 export class Index {
   constructor(chunks) {
@@ -85,9 +99,6 @@ export class Index {
         const idf = Math.log(1 + (N - this.df.get(t) + 0.5) / (this.df.get(t) + 0.5));
         s += idf * ((f * (k1 + 1)) / (f + k1 * (1 - b + (b * d.len) / this.avgLen)));
       }
-      // Direkte paragrafhenvisning, fx "§ 112"
-      const para = query.match(/§\s*(\d+)/);
-      if (para && this.chunks[i].id.startsWith(`lejeloven-${para[1]}`)) s += 20;
       return { i, s: s * (SOURCE_BOOST[this.chunks[i].source] || 1) };
     });
     return scored

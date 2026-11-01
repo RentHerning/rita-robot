@@ -1,6 +1,6 @@
 ---
 title: Rent Hernings GDPR-fortegnelse (persondata)
-url: http://rentherning.dk/Rent_Herning_GDRP.pdf
+url: https://rentherning.dk/Rent_Herning_GDRP.pdf
 type: gdpr
 ---
 
@@ -44,4 +44,4 @@ Kontaktperson for persondata og brud: Casper Søndergaard, casper@rentherning.dk
 Rent Herning har vurderet, at virksomhedens behandling af personoplysninger ikke medfører behov for at foretage en konsekvensanalyse.
 
 ## 10. Chatbotten Rita og persondata
-Chatbotten Rita gemmer ikke samtaler og beder ikke om personoplysninger. Skriv derfor ikke CPR-nummer, kontonummer eller helbredsoplysninger i chatten. Personlige sager sendes via Rent Hernings kontaktformularer.
+Chatbotten Rita gemmer ikke samtaler og beder ikke om personoplysninger. Skriv derfor ikke CPR-nummer, kontonummer eller helbredsoplysninger i chatten. Personlige sager sendes via formularerne på siden Hjælp & kontakt.

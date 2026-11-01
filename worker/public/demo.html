@@ -16,11 +16,11 @@
 <header><div class="logo">R</div><strong>Rent Herning – testside for Rita</strong></header>
 <main>
   <h1>Testside</h1>
-  <p>Denne side viser chatbotten Rita, som den vil se ud på rentherning.dk. Klik på den grønne cirkel nede i højre hjørne.</p>
+  <p>Denne side viser chatbotten Rita. Klik på den grønne knap nede i højre hjørne. På den rigtige hjemmeside fører Ritas hjælpekort til siden Hjælp &amp; kontakt; her peger de på demoen af den nye hjemmeside.</p>
   <p>Sådan kommer Rita på den rigtige hjemmeside – én linje lige før <code>&lt;/body&gt;</code>:</p>
   <p><code id="snippet"></code></p>
-  <script>document.getElementById("snippet").textContent = '<script src="' + location.origin + '/rita.js" defer></' + 'script>';</script>
+  <script>document.getElementById("snippet").textContent = '<script src="' + location.origin + '/rita.js" data-site="/" defer></' + 'script>';</script>
 </main>
-<script src="rita.js" defer></script>
+<script src="rita.js" data-site="https://rentherning.github.io/website/" defer></script>
 </body>
 </html>

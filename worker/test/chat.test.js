@@ -3,43 +3,57 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Index } from "../src/retrieval.js";
 import { parseReply, sanitizeMessages } from "../src/util.js";
+import { buildContext } from "../src/prompt.js";
+import { handleChat } from "../src/index.js";
 
 const knowledge = JSON.parse(readFileSync(new URL("../src/knowledge.json", import.meta.url)));
 const index = new Index(knowledge);
 
-// Spørgsmål -> kilde der skal være blandt top 3
+test("vidensbasen indeholder kun husorden, GDPR og kontakt", () => {
+  assert.deepEqual([...new Set(knowledge.map((c) => c.source))].sort(), ["gdpr", "husorden", "kontakt"]);
+});
+
+test("hele vidensbasen kommer med i konteksten, husordenen først", () => {
+  const ctx = buildContext(knowledge);
+  assert.match(ctx.split("\n")[0], /HUSORDENEN/);
+  for (const c of knowledge) assert.ok(ctx.includes(c.title), `mangler ${c.title}`);
+  assert.ok(ctx.length < 30000, "konteksten skal holde sig lille");
+});
+
+// Kildelinks: spørgsmål -> afsnit der skal være blandt top 3 (dansk og engelsk)
 const CASES = [
-  ["Hvem står for indvendig vedligehold?", ["hjemmeside-9", "lejeloven-112"]],
-  ["Hvordan forbedrer man indeklimaet?", ["husorden-16"]],
   ["Må jeg have en hund?", ["husorden-10"]],
-  ["Hvor lang opsigelse har jeg?", ["hjemmeside-8"]],
-  ["Jeg har fundet fejl efter indflytning", ["hjemmeside-7"]],
-  ["Hvor længe gemmer I mine oplysninger?", ["gdpr-6"]],
-  ["Hvordan søger jeg en ledig lejlighed?", ["hjemmeside-3"]],
-  ["Min vandhane drypper", ["hjemmeside-5"]],
+  ["Can I have a cat?", ["husorden-10"]],
   ["Hvornår skal der være ro?", ["husorden-7"]],
-  ["Må jeg fremleje et værelse?", ["lejeloven-157"]],
-  ["Må jeg tørre tøj i lejligheden?", ["husorden-4", "husorden-16"]],
-  ["Hvad siger § 112?", ["lejeloven-112"]],
+  ["Is it ok to have a party?", ["husorden-7"]],
+  ["Må jeg ryge i lejligheden?", ["husorden-15"]],
+  ["Can I smoke on the balcony?", ["husorden-15"]],
+  ["Hvordan forbedrer man indeklimaet?", ["husorden-16"]],
+  ["How do I avoid mould?", ["husorden-16"]],
+  ["Hvor længe gemmer I mine oplysninger?", ["gdpr-6"]],
+  ["How long do you keep my personal data?", ["gdpr-6"]],
+  ["Min vandhane drypper", ["kontakt-4"]],
+  ["Hvor lang opsigelse har jeg?", ["kontakt-6"]],
+  ["Jeg har fundet fejl efter indflytning", ["kontakt-5"]],
 ];
 for (const [q, expected] of CASES) {
-  test(`retrieval: ${q}`, () => {
+  test(`søgning: ${q}`, () => {
     const top = index.search(q, 3).map((h) => h.id);
     assert.ok(expected.some((e) => top.includes(e)), `forventede ${expected} i ${top}`);
   });
 }
 
-test("parseReply trækker eskalering ud", () => {
-  const r = parseReply("Det skal viceværten se på.\n[[FORMULAR:vicevaert|Min vandhane i køkkenet drypper.]]");
+test("parseReply trækker hjælpekortet ud", () => {
+  const r = parseReply("Det skal viceværten se på.\n[[HJÆLP:vicevaert|Min vandhane i køkkenet drypper.]]");
   assert.equal(r.reply, "Det skal viceværten se på.");
-  assert.equal(r.form.code, "vicevaert");
-  assert.match(r.form.url, /contactSupperintented/);
-  assert.equal(r.form.message, "Min vandhane i køkkenet drypper.");
+  assert.deepEqual(r.help, { code: "vicevaert", message: "Min vandhane i køkkenet drypper." });
 });
 
-test("parseReply accepterer ø i kode og ignorerer ukendte koder", () => {
-  assert.equal(parseReply("x [[FORMULAR:forespørgsel|hej]]").form.code, "forespoergsel");
-  assert.equal(parseReply("x [[FORMULAR:hacker|hej]]").form, null);
+test("parseReply forstår gamle koder og ignorerer ukendte", () => {
+  assert.equal(parseReply("x [[FORMULAR:forespørgsel|hej]]").help.code, "andet");
+  assert.equal(parseReply("x [[HJAELP:syn14|hej]]").help.code, "syn");
+  assert.equal(parseReply("x [[HJÆLP:hacker|hej]]").help, null);
+  assert.equal(parseReply("x [[HJÆLP:boliger|-]]").help.message, "");
 });
 
 test("sanitizeMessages afviser ugyldigt input og begrænser længde", () => {
@@ -50,12 +64,25 @@ test("sanitizeMessages afviser ugyldigt input og begrænser længde", () => {
   assert.equal(long[0].content.length, 1000);
 });
 
-import { buildContext } from "../src/prompt.js";
-test("husordenen står først i konteksten og er markeret som gældende foran lejeloven", () => {
-  const hits = index.search("Må jeg holde fest og larme?", 6);
-  const ctx = buildContext(hits);
-  assert.match(ctx.split("\n")[0], /HUSORDEN – GÆLDER FORAN LEJELOVEN/);
+// handleChat med en falsk model
+const fakeEnv = (reply) => ({ AI: { run: async () => ({ response: reply }) } });
+const ask = (q, reply = "Svar.") => handleChat({ messages: [{ role: "user", content: q }] }, fakeEnv(reply));
+
+test("akut-kortet vises altid ved brand eller vandskade", async () => {
+  assert.equal((await ask("Der er vandskade i køkkenet")).data.help.code, "akut");
+  assert.equal((await ask("There is water damage in my bathroom")).data.help.code, "akut");
 });
-for (const [q, id] of [["Må jeg have en hund?", "husorden-10"], ["Må jeg holde fest?", "husorden-7"], ["Må jeg ryge i lejligheden?", "husorden-15"]]) {
-  test(`husorden vinder over lejeloven: ${q}`, () => assert.equal(index.search(q, 1)[0].id, id));
-}
+
+test("'fire' (= 4) og 'smoke' udløser ikke akut", async () => {
+  assert.equal((await ask("Har I en lejlighed med fire værelser?")).data.help, null);
+  assert.equal((await ask("Can I smoke on the balcony?")).data.help, null);
+});
+
+test("modellen får hele vidensbasen", async () => {
+  let system = "";
+  await handleChat({ messages: [{ role: "user", content: "hej" }] }, { AI: { run: async (m, { messages }) => ((system = messages[0].content), { response: "ok" }) } });
+  assert.match(system, /KONTEKST:/);
+  assert.match(system, /Husdyr/);
+  assert.match(system, /Sletning/);
+  assert.match(system, /Akut skade/);
+});

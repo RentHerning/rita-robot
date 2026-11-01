@@ -1,7 +1,15 @@
 /*!
  * Rita – Rent Hernings chatbot-widget
- * Indsæt på hjemmesiden:  <script src="https://<din-worker>.workers.dev/rita.js" defer></script>
- * Valgfrit: data-api="https://..." (standard: samme domæne som scriptet)
+ *
+ * Indsæt på hjemmesiden:
+ *   <script src="https://<din-worker>.workers.dev/rita.js" defer
+ *     data-site="/"                      hjemmesidens rod (fx "/website/" på GitHub Pages)
+ *     data-lang="da"                     "da" eller "en" (standard: <html lang>)
+ *     data-emergency-phone="12 34 56 78" vises på akut-kortet (valgfri)
+ *     data-api="https://..."></script>   (valgfri, standard: samme domæne som scriptet)
+ *
+ * Placering: knappen sidder nederst til højre. Hjemmesiden kan flytte den op med
+ * CSS-variablen --rita-bottom på #rita-chat (fx over en fast kontaktbjælke).
  */
 (function () {
   "use strict";
@@ -9,28 +17,85 @@
   window.__ritaLoaded = true;
 
   var script = document.currentScript || document.querySelector('script[src*="rita.js"]');
-  var API = (script && script.getAttribute("data-api")) || (script ? new URL(script.src).origin : "");
-  var BRAND = (script && script.getAttribute("data-color")) || "#244030";
-  var STORE_KEY = "rita-chat-v1";
-  var PREFILL_KEY = "rita-prefill-v1";
+  var attr = function (n) { return (script && script.getAttribute(n)) || ""; };
+  var API = attr("data-api") || (script ? new URL(script.src).origin : "");
+  var BRAND = attr("data-color") || "#254031";
+  var SITE = attr("data-site") || "/";
+  if (SITE.slice(-1) !== "/") SITE += "/";
+  var LANG = (attr("data-lang") || document.documentElement.lang || "da").slice(0, 2) === "en" ? "en" : "da";
+  var PHONE = attr("data-emergency-phone");
+  var STORE_KEY = "rita-chat-v2";
+  var PREFILL_KEY = "rita-prefill-v2"; // læses af hjemmesidens hjælpeside
 
-  // Hvilket felt på hver kontaktside Rita må udfylde (feltnavne fra rentherning.dk)
-  var FORM_FIELDS = {
-    "contact.php": "txtBody",
-    "contactSupperintented.php": "txtMissing",
-    "contactSOS.php": "txtMissing",
-    "contact14Syn.php": "txtError",
-    "contactOpsigelse.php": "txtBody",
+  var PATHS = {
+    da: { help: "hjaelp/", listings: "boliger/" },
+    en: { help: "en/help/", listings: "en/homes/" },
   };
+  var url = function (key, hash) { return SITE + PATHS[LANG][key] + (hash ? "#" + hash : ""); };
 
-  var SUGGESTIONS = [
-    "Hvem står for indvendig vedligehold?",
-    "Hvordan forbedrer jeg indeklimaet?",
-    "Hvordan opsiger jeg min lejlighed?",
-    "Hvordan søger jeg en ledig bolig?",
-  ];
-  var GREETING =
-    "Hej, jeg er Rita 👋 Jeg kan svare på spørgsmål om at leje hos Rent Herning, husordenen, lejeloven og hjemmesiden. Hvad kan jeg hjælpe med?";
+  var T = {
+    da: {
+      open: "Åbn chat med Rita",
+      close: "Luk chat",
+      title: "Rita · Rent Herning",
+      subtitle: "Digital assistent",
+      placeholder: "Skriv dit spørgsmål…",
+      send: "Send",
+      newChat: "Ny samtale",
+      note: "Rita er en AI og kan tage fejl. Skriv ikke personoplysninger – samtalen gemmes ikke.",
+      greeting: "Hej, jeg er Rita 👋 Jeg kan svare på spørgsmål om husordenen og om, hvordan vi passer på dine oplysninger – og hjælpe dig videre til den rigtige person. Hvad kan jeg hjælpe med?",
+      suggestions: ["Må jeg have en kat?", "Hvornår skal der være ro?", "Min vandhane drypper", "Hvor længe gemmer I mine oplysninger?"],
+      sources: "Kilder",
+      draft: "Rita har skrevet et udkast:",
+      copy: "Kopiér udkast",
+      copied: "Kopieret ✓",
+      offline: "Jeg kan ikke få forbindelse lige nu. Prøv igen, eller brug siden Hjælp & kontakt.",
+      error: "Noget gik galt. Prøv igen om lidt.",
+      call: "Ring til os nu",
+      phoneOnPage: "Telefonnummeret står øverst på siden Hjælp & kontakt.",
+      fire: "Ved brand, eller hvis nogen er i fare: ring 112.",
+      flows: {
+        akut: ["Akut skade", "Gå til Akut skade"],
+        vicevaert: ["Noget skal ordnes", "Gå til formularen"],
+        syn: ["Fejl og mangler efter indflytning", "Gå til formularen"],
+        opsigelse: ["Jeg vil flytte", "Gå til opsigelse"],
+        andet: ["Andre spørgsmål", "Send dit spørgsmål"],
+        boliger: ["Ledige boliger", "Se ledige boliger"],
+      },
+    },
+    en: {
+      open: "Open chat with Rita",
+      close: "Close chat",
+      title: "Rita · Rent Herning",
+      subtitle: "Digital assistant",
+      placeholder: "Type your question…",
+      send: "Send",
+      newChat: "New chat",
+      note: "Rita is an AI and can make mistakes. Don’t share personal details – the chat isn’t stored.",
+      greeting: "Hi, I’m Rita 👋 I can answer questions about the house rules and how we look after your personal data – and help you reach the right person. How can I help?",
+      suggestions: ["Can I have a cat?", "When do I need to be quiet?", "My tap is dripping", "How long do you keep my data?"],
+      sources: "Sources",
+      draft: "Rita wrote a draft:",
+      copy: "Copy draft",
+      copied: "Copied ✓",
+      offline: "I can’t connect right now. Please try again, or use the Help & contact page.",
+      error: "Something went wrong. Please try again shortly.",
+      call: "Call us now",
+      phoneOnPage: "The phone number is at the top of the Help & contact page.",
+      fire: "In case of fire, or if anyone is in danger: call 112.",
+      flows: {
+        akut: ["Emergency damage", "Go to Emergency damage"],
+        vicevaert: ["Something needs fixing", "Go to the form"],
+        syn: ["Faults after moving in", "Go to the form"],
+        opsigelse: ["I want to move out", "Go to notice"],
+        andet: ["Other questions", "Send your question"],
+        boliger: ["Available homes", "See available homes"],
+      },
+    },
+  }[LANG];
+
+  // Hvilket felt i hjemmesidens hjælpe-flow Ritas udkast skal skrives i.
+  var FIELD = { akut: "besked", vicevaert: "besked", syn: "mangler", andet: "besked" };
 
   // ---------- lager (sessionStorage kan være blokeret) ----------
   function load(key) {
@@ -47,51 +112,54 @@
   var host = document.createElement("div");
   host.id = "rita-chat";
   var root = host.attachShadow({ mode: "open" });
+  var B = "var(--rita-bottom, 20px)";
   root.innerHTML =
     "<style>" +
     ":host{all:initial}" +
-    "*{box-sizing:border-box;font-family:Montserrat,'Fira Sans',system-ui,-apple-system,'Segoe UI',sans-serif}" +
-    ".fab{position:fixed;right:20px;bottom:20px;width:60px;height:60px;border-radius:50%;border:0;background:" + BRAND + ";color:#fff;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:2147483000;transition:transform .15s}" +
-    ".fab:hover{transform:scale(1.06)}.fab:focus-visible{outline:3px solid #9cc5ad;outline-offset:3px}" +
-    ".fab svg{width:28px;height:28px}" +
-    ".panel{position:fixed;right:20px;bottom:92px;width:370px;max-width:calc(100vw - 32px);height:560px;max-height:calc(100vh - 120px);background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.22);display:none;flex-direction:column;overflow:hidden;z-index:2147483000;color:#1b1b1b}" +
+    "*{box-sizing:border-box;font-family:'Fira Sans',system-ui,-apple-system,'Segoe UI',sans-serif}" +
+    "h2,b,.btn,.chip{font-family:Montserrat,'Fira Sans',system-ui,sans-serif}" +
+    ".fab{position:fixed;right:20px;bottom:" + B + ";height:56px;padding:0 20px 0 16px;border-radius:999px;border:0;background:" + BRAND + ";color:#fff;cursor:pointer;box-shadow:0 8px 24px rgba(24,41,31,.3);display:flex;align-items:center;gap:8px;z-index:2147483000;font:600 15px Montserrat,system-ui,sans-serif;transition:transform .15s,bottom .25s}" +
+    ".fab:hover{transform:translateY(-2px)}.fab:focus-visible{outline:3px solid #9cc5ad;outline-offset:3px}" +
+    ".fab svg{width:24px;height:24px}" +
+    ".panel{position:fixed;right:20px;bottom:calc(" + B + " + 72px);width:380px;max-width:calc(100vw - 32px);height:580px;max-height:calc(100vh - 120px);background:#fff;border-radius:18px;box-shadow:0 18px 48px rgba(24,41,31,.25);display:none;flex-direction:column;overflow:hidden;z-index:2147483000;color:#1b221e}" +
     ".panel.open{display:flex}" +
-    ".head{background:" + BRAND + ";color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px}" +
-    ".avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-weight:700}" +
+    ".head{background:" + BRAND + ";color:#fff;padding:14px 12px 14px 16px;display:flex;align-items:center;gap:10px}" +
+    ".avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font:700 15px Montserrat,sans-serif}" +
     ".head h2{font-size:15px;margin:0;font-weight:600}.head p{font-size:12px;margin:2px 0 0;opacity:.8}" +
-    ".x{margin-left:auto;background:none;border:0;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:4px 8px;border-radius:8px}.x:hover{background:rgba(255,255,255,.12)}" +
-    ".log{flex:1;overflow-y:auto;padding:14px;background:#f6f6f6;display:flex;flex-direction:column;gap:10px}" +
-    ".msg{max-width:86%;padding:10px 12px;border-radius:14px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word}" +
-    ".bot{background:#fff;border:1px solid #e6e6e6;align-self:flex-start;border-bottom-left-radius:4px}" +
+    ".tools{margin-left:auto;display:flex;gap:2px}" +
+    ".icon{background:none;border:0;color:#fff;cursor:pointer;padding:6px 8px;border-radius:8px;font-size:12px;line-height:1}.icon:hover{background:rgba(255,255,255,.14)}.x{font-size:22px}" +
+    ".log{flex:1;overflow-y:auto;padding:14px;background:#faf8f4;display:flex;flex-direction:column;gap:10px}" +
+    ".msg{max-width:88%;padding:10px 12px;border-radius:14px;font-size:14.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}" +
+    ".bot{background:#fff;border:1px solid #e6e0d4;align-self:flex-start;border-bottom-left-radius:4px}" +
     ".user{background:" + BRAND + ";color:#fff;align-self:flex-end;border-bottom-right-radius:4px}" +
     ".msg a{color:inherit}" +
-    ".src{margin-top:8px;font-size:11.5px;color:#666}.src a{color:#244030}" +
-    ".card{align-self:flex-start;max-width:86%;background:#eef4f0;border:1px solid #cfe0d5;border-radius:12px;padding:10px 12px;font-size:13px}" +
-    ".card.akut{background:#fdeeee;border-color:#f2c4c4}" +
-    ".card b{display:block;margin-bottom:6px}" +
-    ".card .draft{background:#fff;border-radius:8px;padding:8px;margin:6px 0 8px;font-size:12.5px;color:#333;white-space:pre-wrap}" +
-    ".btn{display:inline-block;border:0;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;margin:2px 6px 2px 0;text-decoration:none}" +
-    ".btn.primary{background:" + BRAND + ";color:#fff}.btn.ghost{background:#fff;color:#244030;border:1px solid #cfe0d5}" +
-    ".chips{display:flex;flex-wrap:wrap;gap:6px}.chip{background:#fff;border:1px solid #cfe0d5;color:#244030;border-radius:999px;padding:6px 10px;font-size:12.5px;cursor:pointer}.chip:hover{background:#eef4f0}" +
-    ".typing{align-self:flex-start;background:#fff;border:1px solid #e6e6e6;border-radius:14px;padding:10px 14px}" +
+    ".src{margin-top:8px;font-size:12px;color:#66706a}.src a{color:#2f5240}" +
+    ".card{align-self:flex-start;max-width:88%;background:#f1f6f2;border:1px solid #c9dacf;border-radius:14px;padding:12px;font-size:13.5px;line-height:1.45}" +
+    ".card.akut{background:#fdf1ef;border-color:#f2c4bd}" +
+    ".card b{display:block;margin-bottom:6px;font-size:14px}.card.akut b{color:#b42318}" +
+    ".card p{margin:0 0 8px}" +
+    ".card .draft{background:#fff;border-radius:8px;padding:8px;margin:4px 0 10px;font-size:13px;color:#333;white-space:pre-wrap}" +
+    ".btn{display:inline-block;border:0;border-radius:999px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;margin:2px 6px 2px 0;text-decoration:none}" +
+    ".btn.primary{background:" + BRAND + ";color:#fff}.btn.danger{background:#b42318;color:#fff}.btn.ghost{background:#fff;color:#254031;border:1px solid #c9dacf}" +
+    ".chips{display:flex;flex-wrap:wrap;gap:6px}.chip{background:#fff;border:1px solid #c9dacf;color:#254031;border-radius:999px;padding:7px 11px;font-size:12.5px;font-weight:500;cursor:pointer}.chip:hover{background:#f1f6f2}" +
+    ".typing{align-self:flex-start;background:#fff;border:1px solid #e6e0d4;border-radius:14px;padding:10px 14px}" +
     ".typing i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#999;margin:0 2px;animation:b 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}" +
     "@keyframes b{0%,60%,100%{opacity:.3}30%{opacity:1}}" +
     "form{display:flex;gap:8px;padding:10px;border-top:1px solid #eee;background:#fff}" +
-    "textarea{flex:1;resize:none;border:1px solid #d6d6d6;border-radius:10px;padding:9px 10px;font-size:14px;height:42px;max-height:110px;outline:none}textarea:focus{border-color:" + BRAND + "}" +
-    ".send{background:" + BRAND + ";border:0;color:#fff;border-radius:10px;width:44px;cursor:pointer}.send:disabled{opacity:.5;cursor:default}" +
-    ".note{font-size:11px;color:#777;text-align:center;padding:0 10px 8px;background:#fff}" +
-    ".toast{position:fixed;right:20px;bottom:92px;max-width:320px;background:" + BRAND + ";color:#fff;padding:12px 14px;border-radius:12px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:2147483001}" +
-    "@media (max-width:480px){.panel{right:0;bottom:0;width:100vw;max-width:100vw;height:100%;max-height:100%;border-radius:0}.fab.hidden{display:none}}" +
+    "textarea{flex:1;resize:none;border:1.5px solid #ddd7cb;border-radius:12px;padding:10px 12px;font-size:16px;height:46px;max-height:110px;outline:none}textarea:focus{border-color:" + BRAND + "}" +
+    ".send{background:" + BRAND + ";border:0;color:#fff;border-radius:12px;width:46px;cursor:pointer;font-size:16px}.send:disabled{opacity:.5;cursor:default}" +
+    ".note{font-size:11px;color:#66706a;text-align:center;padding:0 10px 8px;background:#fff}" +
+    "@media (max-width:480px){.fab{padding:0;width:56px;justify-content:center}.fab span{display:none}.panel{right:0;bottom:0;width:100vw;max-width:100vw;height:100%;max-height:100%;border-radius:0}.fab.hidden{display:none}}" +
     "@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}" +
     "</style>" +
-    '<button class="fab" aria-label="Åbn chat med Rita" aria-expanded="false">' +
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+    '<button class="fab" aria-expanded="false">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Rita</span>' +
     "</button>" +
-    '<section class="panel" role="dialog" aria-label="Chat med Rita">' +
-    '<div class="head"><div class="avatar">R</div><div><h2>Rita · Rent Herning</h2><p>Digital assistent</p></div><button class="x" aria-label="Luk chat">×</button></div>' +
+    '<section class="panel" role="dialog">' +
+    '<div class="head"><div class="avatar" aria-hidden="true">R</div><div><h2></h2><p></p></div><div class="tools"><button class="icon reset" type="button"></button><button class="icon x" type="button">×</button></div></div>' +
     '<div class="log" aria-live="polite"></div>' +
-    '<form><textarea placeholder="Skriv dit spørgsmål…" aria-label="Dit spørgsmål" maxlength="1000"></textarea><button class="send" type="submit" aria-label="Send">➤</button></form>' +
-    '<div class="note">Rita er en AI og kan tage fejl. Skriv ikke personoplysninger – samtalen gemmes ikke.</div>' +
+    '<form><textarea maxlength="1000"></textarea><button class="send" type="submit">➤</button></form>' +
+    '<div class="note"></div>' +
     "</section>";
 
   var fab = root.querySelector(".fab");
@@ -100,6 +168,19 @@
   var form = root.querySelector("form");
   var input = root.querySelector("textarea");
   var sendBtn = root.querySelector(".send");
+  var resetBtn = root.querySelector(".reset");
+  var closeBtn = root.querySelector(".x");
+
+  fab.setAttribute("aria-label", T.open);
+  panel.setAttribute("aria-label", T.title);
+  root.querySelector("h2").textContent = T.title;
+  root.querySelector(".head p").textContent = T.subtitle;
+  resetBtn.textContent = T.newChat;
+  closeBtn.setAttribute("aria-label", T.close);
+  input.placeholder = T.placeholder;
+  input.setAttribute("aria-label", T.placeholder);
+  sendBtn.setAttribute("aria-label", T.send);
+  root.querySelector(".note").textContent = T.note;
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -122,6 +203,10 @@
     return e;
   }
 
+  function sourceUrl(s) {
+    return /^https?:/.test(s.url) ? s.url : url("help");
+  }
+
   function renderMessage(m) {
     if (m.role === "user") {
       log.appendChild(el("div", "msg user", esc(m.content)));
@@ -133,38 +218,54 @@
         el(
           "div",
           "src",
-          "Kilder: " +
+          T.sources + ": " +
             m.sources
-              .map(function (s) { return '<a href="' + esc(s.url) + '" target="_blank" rel="noopener">' + esc(s.title) + "</a>"; })
+              .map(function (s) { return '<a href="' + esc(sourceUrl(s)) + '" target="_blank" rel="noopener">' + esc(s.title) + "</a>"; })
               .join(" · ")
         )
       );
     }
     log.appendChild(b);
-    if (m.form) renderFormCard(m.form);
+    if (m.help) renderHelpCard(m.help);
   }
 
-  function renderFormCard(f) {
-    var c = el("div", "card" + (f.code === "akut" ? " akut" : ""));
-    c.appendChild(el("b", null, "Kontakt Rent Herning via formularen “" + esc(f.label) + "”"));
-    if (f.message) {
-      c.appendChild(el("div", null, "Forslag til besked:"));
-      c.appendChild(el("div", "draft", esc(f.message)));
+  function renderHelpCard(h) {
+    var flow = T.flows[h.code];
+    if (!flow) return;
+    var c = el("div", "card" + (h.code === "akut" ? " akut" : ""));
+    c.appendChild(el("b", null, esc(flow[0])));
+
+    if (h.code === "akut") {
+      c.appendChild(el("p", null, "<strong>" + esc(T.fire) + "</strong>"));
+      if (PHONE) {
+        var tel = el("a", "btn danger", "☎ " + esc(T.call) + ": " + esc(PHONE));
+        tel.href = "tel:" + PHONE.replace(/\s/g, "");
+        c.appendChild(tel);
+      } else {
+        c.appendChild(el("p", null, esc(T.phoneOnPage)));
+      }
     }
-    var go = el("a", "btn primary", "Gå til formularen");
-    go.href = f.url;
+
+    if (h.message && FIELD[h.code]) {
+      c.appendChild(el("div", null, esc(T.draft)));
+      c.appendChild(el("div", "draft", esc(h.message)));
+    }
+
+    var go = el("a", "btn " + (h.code === "akut" && !PHONE ? "danger" : h.code === "akut" ? "ghost" : "primary"), esc(flow[1]));
+    go.href = h.code === "boliger" ? url("listings") : url("help", h.code === "opsigelse" ? "opsigelse" : h.code);
     go.addEventListener("click", function () {
-      var page = f.url.split("/").pop();
-      save(PREFILL_KEY, { page: page, message: f.message || "", ts: Date.now() });
+      if (h.message && FIELD[h.code]) save(PREFILL_KEY, { flow: h.code, field: FIELD[h.code], message: h.message, ts: Date.now() });
       state.open = false; // luk panelet, så formularen er synlig
       save(STORE_KEY, state);
+      setOpen(false);
     });
     c.appendChild(go);
-    if (f.message && navigator.clipboard) {
-      var cp = el("button", "btn ghost", "Kopiér besked");
+
+    if (h.message && FIELD[h.code] && navigator.clipboard) {
+      var cp = el("button", "btn ghost", esc(T.copy));
       cp.type = "button";
       cp.addEventListener("click", function () {
-        navigator.clipboard.writeText(f.message).then(function () { cp.textContent = "Kopieret ✓"; });
+        navigator.clipboard.writeText(h.message).then(function () { cp.textContent = T.copied; });
       });
       c.appendChild(cp);
     }
@@ -173,10 +274,10 @@
 
   function renderAll() {
     log.innerHTML = "";
-    log.appendChild(el("div", "msg bot", fmt(GREETING)));
+    log.appendChild(el("div", "msg bot", fmt(T.greeting)));
     if (!state.messages.length) {
       var chips = el("div", "chips");
-      SUGGESTIONS.forEach(function (q) {
+      T.suggestions.forEach(function (q) {
         var ch = el("button", "chip", esc(q));
         ch.type = "button";
         ch.addEventListener("click", function () { ask(q); });
@@ -184,6 +285,7 @@
       });
       log.appendChild(chips);
     }
+    resetBtn.hidden = !state.messages.length;
     state.messages.forEach(renderMessage);
     log.scrollTop = log.scrollHeight;
   }
@@ -216,7 +318,7 @@
     fetch(API + "/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history }),
+      body: JSON.stringify({ messages: history, lang: LANG }),
     })
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
@@ -225,12 +327,12 @@
         var d = res.d || {};
         state.messages.push(
           res.ok
-            ? { role: "assistant", content: d.reply, form: d.form || null, sources: d.sources || [] }
-            : { role: "assistant", content: d.error || "Noget gik galt. Prøv igen om lidt." }
+            ? { role: "assistant", content: d.reply, help: d.help || d.form || null, sources: d.sources || [] }
+            : { role: "assistant", content: d.error || T.error }
         );
       })
       .catch(function () {
-        state.messages.push({ role: "assistant", content: "Jeg kan ikke få forbindelse lige nu. Prøv igen, eller brug kontaktformularen under Kontakt." });
+        state.messages.push({ role: "assistant", content: T.offline });
       })
       .then(function () {
         busy = false;
@@ -242,7 +344,13 @@
   }
 
   fab.addEventListener("click", function () { setOpen(true); });
-  root.querySelector(".x").addEventListener("click", function () { setOpen(false); fab.focus(); });
+  closeBtn.addEventListener("click", function () { setOpen(false); fab.focus(); });
+  resetBtn.addEventListener("click", function () {
+    state.messages = [];
+    save(STORE_KEY, state);
+    renderAll();
+    input.focus();
+  });
   panel.addEventListener("keydown", function (e) { if (e.key === "Escape") { setOpen(false); fab.focus(); } });
   form.addEventListener("submit", function (e) {
     e.preventDefault();
@@ -257,28 +365,9 @@
     }
   });
 
-  // ---------- Forudfyld kontaktformular efter eskalering ----------
-  function prefill() {
-    var p = load(PREFILL_KEY);
-    if (!p || Date.now() - p.ts > 15 * 60 * 1000) return;
-    var page = location.pathname.split("/").pop();
-    if (page !== p.page || !FORM_FIELDS[page]) return;
-    var field = document.querySelector('[name="' + FORM_FIELDS[page] + '"]');
-    if (field && !field.value && p.message) {
-      field.value = p.message;
-      field.dispatchEvent(new Event("input", { bubbles: true }));
-      try { sessionStorage.removeItem(PREFILL_KEY); } catch (e) {}
-      var t = el("div", "toast", "Rita har skrevet et udkast i beskedfeltet. Tjek det, udfyld dine oplysninger og send formularen.");
-      root.appendChild(t);
-      setTimeout(function () { t.remove(); }, 7000);
-      field.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }
-
   function mount() {
     document.body.appendChild(host);
     if (state.open) setOpen(true);
-    prefill();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
   else mount();

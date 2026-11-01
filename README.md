@@ -1,37 +1,53 @@
 # Rita – Rent Hernings chatbot
 
-Rita er en dansk chatbot til [rentherning.dk](https://rentherning.dk). Den svarer kun på spørgsmål om at leje bolig hos Rent Herning, husordenen, lejeloven, Rent Hernings behandling af persondata og hvordan hjemmesiden og kontaktformularerne virker. Når et spørgsmål kræver en medarbejder, sender Rita brugeren videre til den rigtige kontaktformular med et forslag til beskeden, som automatisk bliver skrevet ind i formularens beskedfelt.
+Rita er en dansk (og engelsk) chatbot til Rent Hernings hjemmeside. Hun svarer **kun ud fra husordenen og privatlivsdokumentet (GDPR)**, og hun hjælper lejeren videre til den rigtige person: Når nogen skal have noget gjort, viser Rita et kort, der åbner den rigtige mulighed på siden *Hjælp & kontakt* med hendes udkast allerede skrevet ind i beskedfeltet. Ved akutte skader viser hun telefonnummeret og 112 først, og boligsøgende sendes til *Ledige boliger*.
 
-Hele løsningen kører på én Cloudflare Worker. Den serverer selve widget-scriptet, søger i en lille indbygget vidensbase og kalder Cloudflare Workers AI. Ved få henvendelser om dagen ligger det inden for Cloudflares gratis kvote. Hjemmesiden skal kun have tilføjet én linje:
+Hele løsningen kører på én Cloudflare Worker, der serverer widget-scriptet og kalder Cloudflare Workers AI. Ved få henvendelser om dagen ligger det inden for Cloudflares gratis kvote. Hjemmesiden indsætter én linje:
 
 ```html
-<script src="https://rita-robot.philip15.workers.dev/rita.js" defer></script>
+<script src="https://rita-robot.philip15.workers.dev/rita.js" defer
+        data-site="/" data-lang="da" data-emergency-phone="12 34 56 78"></script>
 ```
+
+| Attribut | Betydning |
+|---|---|
+| `data-site` | Hjemmesidens rod, fx `/` på rentherning.dk eller `/website/` på GitHub Pages |
+| `data-lang` | `da` eller `en` (standard: sidens `<html lang>`). Rita svarer på brugerens sprog uanset |
+| `data-emergency-phone` | Vises som "Ring til os nu" på akut-kortet. Uden nummer henviser Rita til siden Hjælp & kontakt |
 
 ## Sådan hænger det sammen
 
-```
- rentherning.dk                        Cloudflare Worker (rita-robot)
- ┌──────────────────┐   POST /api/chat  ┌──────────────────────────────────────┐
- │ rita.js          │ ────────────────▶ │ 1. BM25-søgning i knowledge.json     │
- │ (rund knap nede  │                   │ 2. Systemprompt + 6 bedste afsnit    │
- │  til højre)      │ ◀──────────────── │ 3. Workers AI (Llama 3.3 70B)        │
- └──────────────────┘  svar + kilder +  │ 4. [[FORMULAR:…]] → eskaleringskort  │
-        │              evt. formular    └──────────────────────────────────────┘
-        ▼ "Gå til formularen"
- contactSupperintented.php  ← Rita udfylder beskedfeltet (sessionStorage, samme domæne)
+```mermaid
+flowchart LR
+  W[rita.js på hjemmesiden] -- POST /api/chat --> C[Cloudflare Worker]
+  C -- systemprompt + HELE vidensbasen --> M[Workers AI · Llama 3.3 70B]
+  M -- svar + evt. HJÆLP-kode --> C
+  C -- svar, kildelinks, hjælpekort --> W
+  W -- "Gå til formularen" + udkast i sessionStorage --> H[Hjælp & kontakt-siden]
 ```
 
-Vidensbasen bygges fra fire kilder. Husordenen og GDPR-fortegnelsen er hentet ordret fra PDF'erne på hjemmesiden, og formularernes tekster og feltnavne er aflæst direkte på siderne. Lejeloven er delt op i én bid pr. paragraf.
+Vidensbasen er så lille (35 afsnit, ca. 5.000 tokens), at hele den sendes med hver gang. Så kan modellen ikke "mangle" et afsnit, og engelske spørgsmål virker lige så godt som danske. Søgningen (BM25) bruges kun til at vælge de 1–2 kildelinks, der vises under svaret.
 
 | Kilde | Fil | Afsnit | Opdateres ved |
 |---|---|---|---|
-| Hjemmeside og formularer | `data/sources/hjemmeside.md` | 9 | Ret teksten, kør build |
 | Husorden | `data/sources/husorden.md` | 16 | Ny PDF på hjemmesiden |
-| GDPR-fortegnelse | `data/sources/gdpr.md` | 10 | Ny PDF på hjemmesiden |
-| Lejeloven (LOV nr. 341 af 2022) | `data/raw/lejeloven.txt` | 223 | Ny lovbekendtgørelse |
+| Privatlivsdokument (GDPR) | `data/sources/gdpr.md` | 10 | Ny PDF på hjemmesiden |
+| Sådan får du hjælp | `data/sources/kontakt.md` | 9 | Når hjælpesiden eller Rent Hernings regler for henvendelser ændres |
 
-Eskaleringen følger hjemmesidens fem formularer. Akut bruges kun ved brand, vandskade og lignende. Viceværten får reparationer, 14 dags syn bruges til mangler efter indflytning, og Opsigelse og Forespørgsel dækker resten. Nævner brugeren brand eller vandskade, viser Workeren altid Akut-kortet, også hvis modellen glemmer det.
+Lejeloven er fjernet: Rita giver ikke juridisk rådgivning, og spørgsmål uden for husorden og GDPR sendes videre til Rent Herning under *Andre spørgsmål*.
+
+Hjælpekortene følger hjælpesidens muligheder:
+
+| Kode | Mulighed på hjemmesiden | Bruges når |
+|---|---|---|
+| `akut` | Akut skade | Kun brand, vandskade eller andet, der ikke kan vente. Vises altid, hvis brugeren nævner brand eller vandskade |
+| `vicevaert` | Noget skal ordnes | Noget skal repareres eller ordnes |
+| `syn` | Fejl og mangler efter indflytning | Fejl fundet inden for 14 dage efter indflytning |
+| `opsigelse` | Jeg vil flytte | Brugeren vil opsige |
+| `andet` | Andre spørgsmål | Husleje, kontrakt, eller når Rita ikke kan svare |
+| `boliger` | Ledige boliger | Brugeren søger en bolig |
+
+Ritas udkast overføres til formularen via `sessionStorage` (nøgle `rita-prefill-v2`), ikke via adresselinjen, så lejerens tekst ikke havner i serverlogs.
 
 ## Kom i gang
 
@@ -40,13 +56,13 @@ Du skal bruge Node 20+ og en gratis Cloudflare-konto.
 ```bash
 cd worker
 npm install
-npm test                      # retrieval- og parser-tests (ingen konto nødvendig)
+npm test                      # søge-, parser- og chat-tests med falsk model (ingen konto nødvendig)
 node dev/mock-server.mjs      # lokal demo med falsk AI: http://localhost:8787/demo.html
 npx wrangler login
 npm run deploy                # bygger vidensbasen og deployer
 ```
 
-Efter deploy kan botten afprøves på `https://rita-robot.philip15.workers.dev/demo.html`. Når den virker, skal scriptlinjen ovenfor ind lige før `</body>` på rentherning.dk. Siden er lavet af Simpelapps.dk, så det er formentlig dem, der skal indsætte den. Husk at tilføje eventuelle test-domæner i `ALLOWED_ORIGINS` i `worker/wrangler.toml`. Andre domæner får afvist deres kald.
+Efter deploy kan botten afprøves på `https://rita-robot.philip15.workers.dev/demo.html`. Den nye hjemmeside (repo `RentHerning/website`) indsætter scriptet selv. Domæner, der må bruge chatten, står i `ALLOWED_ORIGINS` i `worker/wrangler.toml` (rentherning.dk, demoen på rentherning.github.io og localhost); andre domæner får afvist deres kald.
 
 ## Skift sprogmodel
 
@@ -62,7 +78,7 @@ LLM_MODEL    = "claude-haiku-4-5"
 npx wrangler secret put LLM_API_KEY
 ```
 
-En bemærkning om `mhenrichsen/danskgpt-tiny`: det er en lille model på omkring 1 mia. parametre. Den kan ikke køre direkte på Workers AI, og den er for lille til pålideligt at følge regler og citere lovtekst. Den skal i givet fald hostes som Hugging Face Endpoint og kobles på via variablerne ovenfor.
+En bemærkning om `mhenrichsen/danskgpt-tiny`: det er en lille model på omkring 1 mia. parametre. Den kan ikke køre direkte på Workers AI, og den er for lille til pålideligt at følge regler og citere lovtekst. Den skal i givet fald hostes som Hugging Face Endpoint og kobles på via variablerne ovenfor. Med hele vidensbasen i prompten (ca. 5.000 tokens) skal modellen desuden have et kontekstvindue på mindst 8.000 tokens.
 
 ## Opdatering af vidensbasen
 
