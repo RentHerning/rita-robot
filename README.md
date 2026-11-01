@@ -49,6 +49,19 @@ Hjælpekortene følger hjælpesidens muligheder:
 
 Ritas udkast overføres til formularen via `sessionStorage` (nøgle `rita-prefill-v2`), ikke via adresselinjen, så lejerens tekst ikke havner i serverlogs.
 
+## Rate limiting
+
+Rita har to lag, så ingen enkelt person og ingen bot kan bruge hele AI-kvoten:
+
+| Lag | Grænse | Hvordan | Gemmer |
+|---|---|---|---|
+| Pr. besøgende | 10 beskeder pr. minut pr. IP | Cloudflares rate-limit-binding `RATE_LIMITER` | Intet – Cloudflare tæller |
+| For alle tilsammen | `DAILY_LIMIT` spørgsmål pr. døgn (standard 500) | Én tæller pr. dag i KV-navnerummet `RITA_LIMITS` | Kun ét tal pr. dag (slettes efter 3 dage) – ingen IP-adresser eller tekster |
+
+Rammer man en grænse, svarer Rita venligt på brugerens sprog (dansk/engelsk) og henviser til siden Hjælp & kontakt. Begge lag fejler åbent: Har Cloudflare et hikke, svarer Rita hellere end at gå i stå. KV er "eventually consistent", så det daglige loft er omtrentligt.
+
+KV-navnerummet `RITA_LIMITS` er oprettet og står i `worker/wrangler.toml`. Loftet ændres med `DAILY_LIMIT` samme sted. Flyttes Rita til en anden Cloudflare-konto, oprettes et nyt med `npx wrangler kv namespace create RITA_LIMITS`, og id'et skiftes ud.
+
 ## Kom i gang
 
 Du skal bruge Node 20+ og en gratis Cloudflare-konto.
