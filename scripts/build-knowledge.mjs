@@ -10,7 +10,8 @@ const chunks = [];
 
 // Markdown-kilder: én chunk pr. "## "-overskrift
 for (const file of readdirSync(join(root, "data/sources")).filter((f) => f.endsWith(".md"))) {
-  const raw = readFileSync(join(root, "data/sources", file), "utf8");
+  // Windows-checkouts har CRLF-linjeskift; normalisér, så frontmatter og overskrifter genkendes.
+  const raw = readFileSync(join(root, "data/sources", file), "utf8").replace(/\r\n?/g, "\n");
   const fm = raw.match(/^---\n([\s\S]*?)\n---\n/);
   const meta = Object.fromEntries(
     (fm ? fm[1] : "").split("\n").filter(Boolean).map((l) => {
@@ -32,6 +33,19 @@ for (const file of readdirSync(join(root, "data/sources")).filter((f) => f.endsW
       text: rest.join("\n").trim(),
     });
   });
+}
+
+// Stop hellere end at deploye en halv vidensbase.
+const broken = chunks.filter((c) => !c.source || !c.title || !c.text);
+if (broken.length) {
+  console.error(`Fejl: ${broken.length} afsnit mangler kilde, titel eller tekst (fx ${broken[0].id}). Tjek frontmatter i data/sources/.`);
+  process.exit(1);
+}
+const expected = ["gdpr", "husorden", "kontakt"];
+const found = [...new Set(chunks.map((c) => c.source))].sort();
+if (found.join() !== expected.join()) {
+  console.error(`Fejl: forventede kilderne ${expected.join(", ")}, fandt ${found.join(", ")}.`);
+  process.exit(1);
 }
 
 writeFileSync(join(root, "worker/src/knowledge.json"), JSON.stringify(chunks, null, 1));
