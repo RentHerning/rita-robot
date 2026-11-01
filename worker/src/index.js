@@ -2,6 +2,7 @@ import knowledge from "./knowledge.json" with { type: "json" };
 import { Index } from "./retrieval.js";
 import { SYSTEM_PROMPT, buildContext } from "./prompt.js";
 import { parseReply, sanitizeMessages } from "./util.js";
+import { checkLimits } from "./limits.js";
 
 const index = new Index(knowledge);
 // Hele vidensbasen er lille nok til at sendes med hver gang (se prompt.js).
@@ -84,17 +85,14 @@ export default {
 
     if (url.pathname === "/api/chat" && request.method === "POST") {
       if (cors["Access-Control-Allow-Origin"] === "null") return json({ error: "Origin ikke tilladt." }, 403, cors);
-      if (env.RATE_LIMITER) {
-        const ip = request.headers.get("CF-Connecting-IP") || "ukendt";
-        const { success } = await env.RATE_LIMITER.limit({ key: ip });
-        if (!success) return json({ error: "Du har sendt mange beskeder. Prøv igen om lidt." }, 429, cors);
-      }
       let body;
       try {
         body = await request.json();
       } catch {
         return json({ error: "Ugyldig JSON." }, 400, cors);
       }
+      const limited = await checkLimits(request, env, ctx, body?.lang === "en" ? "en" : "da");
+      if (limited) return json({ error: limited.error }, limited.status, { ...cors, "Retry-After": String(limited.retryAfter) });
       try {
         const { status, data } = await handleChat(body, env);
         return json(data, status, cors);

@@ -26,8 +26,19 @@ ALLOW_LOCALHOST = "false"
 # LLM_MODEL    = "claude-haiku-4-5"
 # ... og sæt nøglen som secret:  npx wrangler secret put LLM_API_KEY
 
-# Simpel beskyttelse mod misbrug: 20 beskeder pr. minut pr. IP
+# Max antal spørgsmål pr. døgn for alle besøgende tilsammen (beskytter AI-kvoten).
+# Kræver KV-navnerummet RITA_LIMITS nedenfor; uden det tælles der ikke.
+DAILY_LIMIT = "500"
+
+# Rate limiting, lag 1: max 10 beskeder pr. minut pr. IP (Cloudflare tæller, Rita gemmer intet)
 [[ratelimits]]
 name = "RATE_LIMITER"
 namespace_id = "1001"
-simple = { limit = 20, period = 60 }
+simple = { limit = 10, period = 60 }
+
+# Rate limiting, lag 2: dagligt loft for alle tilsammen (én tæller pr. dag, ingen IP-adresser).
+# Opret én gang med:  npx wrangler kv namespace create RITA_LIMITS
+# og indsæt det id, kommandoen skriver ud, herunder. Fjern så "#" foran de tre linjer.
+# [[kv_namespaces]]
+# binding = "RITA_LIMITS"
+# id = "<indsæt-id>"
