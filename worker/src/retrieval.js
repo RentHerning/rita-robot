@@ -43,7 +43,7 @@ const SYNONYMS = {
   bike: ["cykler"], bicycle: ["cykler"], pram: ["barnevogne"], stairs: ["trappevask", "opgangen"],
   cleaning: ["rengøring"], clean: ["rengøring"], moving: ["fraflytning", "opsigelse"], notice: ["opsigelse", "opsigelsesvarsel"],
   holes: ["huller", "skader"], walls: ["vægge"], paint: ["maling"], waterbed: ["vandsenge"], lock: ["aflåsning"],
-  data: ["personoplysninger"], personal: ["personoplysninger"], privacy: ["personoplysninger", "gdpr"],
+  personal: ["personoplysninger"], privacy: ["personoplysninger", "gdpr"],
   delete: ["sletning", "slettes"], deleted: ["sletning", "slettes"], keep: ["sletning", "opbevares"], stored: ["opbevares", "sletning"],
   breach: ["brud"], security: ["sikkerhed"], gdpr: ["gdpr", "personoplysninger"],
 };
