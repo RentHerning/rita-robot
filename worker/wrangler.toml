@@ -37,8 +37,7 @@ namespace_id = "1001"
 simple = { limit = 10, period = 60 }
 
 # Rate limiting, lag 2: dagligt loft for alle tilsammen (én tæller pr. dag, ingen IP-adresser).
-# Opret én gang med:  npx wrangler kv namespace create RITA_LIMITS
-# og indsæt det id, kommandoen skriver ud, herunder. Fjern så "#" foran de tre linjer.
-# [[kv_namespaces]]
-# binding = "RITA_LIMITS"
-# id = "<indsæt-id>"
+# Oprettet med:  npx wrangler kv namespace create RITA_LIMITS  (konto Philip15@live.dk)
+[[kv_namespaces]]
+binding = "RITA_LIMITS"
+id = "5102b3457fb94f248ae89b8d6075d6c7"

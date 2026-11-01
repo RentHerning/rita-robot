@@ -60,13 +60,7 @@ Rita har to lag, så ingen enkelt person og ingen bot kan bruge hele AI-kvoten:
 
 Rammer man en grænse, svarer Rita venligt på brugerens sprog (dansk/engelsk) og henviser til siden Hjælp & kontakt. Begge lag fejler åbent: Har Cloudflare et hikke, svarer Rita hellere end at gå i stå. KV er "eventually consistent", så det daglige loft er omtrentligt.
 
-Det daglige loft skal slås til én gang:
-
-```bash
-npx wrangler kv namespace create RITA_LIMITS
-```
-
-Indsæt det `id`, kommandoen skriver, i `worker/wrangler.toml` under `[[kv_namespaces]]`, og fjern `#` foran de tre linjer. Loftet ændres med `DAILY_LIMIT` samme sted.
+KV-navnerummet `RITA_LIMITS` er oprettet og står i `worker/wrangler.toml`. Loftet ændres med `DAILY_LIMIT` samme sted. Flyttes Rita til en anden Cloudflare-konto, oprettes et nyt med `npx wrangler kv namespace create RITA_LIMITS`, og id'et skiftes ud.
 
 ## Kom i gang
 
